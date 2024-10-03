@@ -1,0 +1,8 @@
+[package]
+name = "cdc-imviewer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = "3.1.6"
+serialport = "4.5.1"
