@@ -116,6 +116,7 @@ struct SinSignal {
     x: f64,
     interval: f64,
     period: f64,
+    // 决定了实际的值,在图上与轴的值的范围的缩放比例
     scale: f64,
 }
 
@@ -133,6 +134,7 @@ impl SinSignal {
 impl Iterator for SinSignal {
     type Item = (f64, f64);
     fn next(&mut self) -> Option<Self::Item> {
+        //TODO: fetch imu data here
         let point = (self.x, (self.x * 1.0 / self.period).sin() * self.scale);
         self.x += self.interval;
         Some(point)
@@ -141,9 +143,9 @@ impl Iterator for SinSignal {
 
 impl App {
     fn new() -> Self {
-        let mut signal1 = SinSignal::new(0.2, 3.0, 18.0);
-        let mut signal2 = SinSignal::new(0.2, 3.0, 10.0);
-        let mut signal3 = SinSignal::new(0.2, 3.0, 14.0);
+        let mut signal1 = SinSignal::new(0.2, 5.0, 100.0);
+        let mut signal2 = SinSignal::new(0.2, 10.0, 100.0);
+        let mut signal3 = SinSignal::new(0.2, 20.0, 100.0);
         let data1 = signal1.by_ref().take(20).collect::<Vec<(f64, f64)>>();
         let data2 = signal2.by_ref().take(20).collect::<Vec<(f64, f64)>>();
         let data3 = signal3.by_ref().take(20).collect::<Vec<(f64, f64)>>();
@@ -180,7 +182,9 @@ impl App {
     }
 
     fn on_tick(&mut self) {
+        // 从现有的数据中,取出一定笔数
         self.data1.drain(0..5);
+        // 再从数据源, 填充一定量的数据
         self.data1.extend(self.signal1.by_ref().take(5));
 
         self.data2.drain(0..5);
@@ -189,15 +193,14 @@ impl App {
         self.data3.drain(0..5);
         self.data3.extend(self.signal3.by_ref().take(5));
 
+        // window 有何作用?
         self.window[0] += 1.0;
         self.window[1] += 1.0;
     }
 
     fn draw(&self, frame: &mut Frame) {
-        let [top, bottom] = Layout::vertical([Constraint::Fill(1); 2]).areas(frame.area());
-        let [animated_chart, bar_chart] =
-            Layout::horizontal([Constraint::Fill(1), Constraint::Length(29)]).areas(top);
-        let [line_chart, scatter] = Layout::horizontal([Constraint::Fill(1); 2]).areas(bottom);
+        let [top] = Layout::vertical([Constraint::Fill(1); 1]).areas(frame.area());
+        let [animated_chart] = Layout::horizontal([Constraint::Fill(1); 1]).areas(top);
 
         self.render_animated_chart(frame, animated_chart);
     }
@@ -221,12 +224,12 @@ impl App {
                 .style(Style::default().fg(Color::Red))
                 .data(&self.data1),
             Dataset::default()
-                .name("y") //.marker(symbols::Marker::Braille)
+                .name("y")
                 .marker(symbols::Marker::Dot)
                 .style(Style::default().fg(Color::Green))
                 .data(&self.data2),
             Dataset::default()
-                .name("z") //.marker(symbols::Marker::Braille)
+                .name("z")
                 .marker(symbols::Marker::Dot)
                 .style(Style::default().fg(Color::Blue))
                 .data(&self.data3),
@@ -234,16 +237,18 @@ impl App {
 
         let chart = Chart::new(datasets)
             .block(Block::bordered())
+            // x轴的含义
             .x_axis(
                 Axis::default()
-                    .title("X Axis")
+                    .title("timestamp/us")
                     .style(Style::default().fg(Color::Gray))
                     .labels(x_labels)
                     .bounds(self.window),
             )
+            // y轴的含义
             .y_axis(
                 Axis::default()
-                    .title("Y Axis")
+                    .title("m/s^2")
                     .style(Style::default().fg(Color::Gray))
                     .labels(["-100".bold(), "0".into(), "100".bold()])
                     .bounds([-100.0, 100.0]),
